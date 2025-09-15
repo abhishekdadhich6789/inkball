@@ -61,7 +61,8 @@ java org.junit.runner.JUnitCore AppTest BallTest
 ![images](https://github.com/user-attachments/assets/6909de62-167a-4858-a545-3c1bc826b29f)
 
 
----
+--<img width="546" height="635" alt="onjwua6mlvua1" src="https://github.com/user-attachments/assets/98b12182-8826-4148-b497-db69db887131" />
+
 
 ## 📜 License
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
