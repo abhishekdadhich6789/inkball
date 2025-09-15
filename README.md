@@ -57,7 +57,9 @@ java org.junit.runner.JUnitCore AppTest BallTest
 ---
 
 ## 📸 Screenshots
-*(Add your game screenshots here for better presentation)*  
+
+![images](https://github.com/user-attachments/assets/6909de62-167a-4858-a545-3c1bc826b29f)
+
 
 ---
 
