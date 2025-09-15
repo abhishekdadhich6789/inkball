@@ -1,0 +1,707 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>App.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">inkball_scaffold (1)</a> &gt; <a href="index.source.html" class="el_package">inkball</a> &gt; <span class="el_source">App.java</span></div><h1>App.java</h1><pre class="source lang-java linenums">package inkball;
+
+import processing.core.PApplet;
+import processing.core.PImage;
+import processing.core.PVector;
+import processing.data.JSONArray;
+import processing.data.JSONObject;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+public class App extends PApplet {
+
+    public static final int CELLSIZE = 32;
+    public static final int TOPBAR = 64;
+<span class="fc" id="L16">    public static int WIDTH = 576;</span>
+<span class="fc" id="L17">    public static int HEIGHT = 640;</span>
+    public static final int FPS = 30;
+
+    public PImage greyBallImage;
+    public PImage orangeBallImage;
+    public PImage blueBallImage;
+    public PImage greenBallImage;
+    public PImage yellowBallImage;
+
+    // Arrow images
+    public PImage upArrowImage;
+    public PImage downArrowImage;
+    public PImage leftArrowImage;
+    public PImage rightArrowImage;
+
+    public PImage speedImage;  // Declare a variable for the speed boost image
+
+    public String configPath;
+    public int spawnInterval;
+    public String layoutFile;
+<span class="fc" id="L37">    public int level = 1;  // Global level variable to change between levels</span>
+    public int totalTime;  // Total time for the current level from config
+    public int remainingTime;  // Countdown timer for the level
+<span class="fc" id="L40">    public int score = 0;  // Persistent score across levels</span>
+<span class="fc" id="L41">    public boolean levelEnded = false;  // Flag to check if the level is over</span>
+
+    // Points awarded for absorbing different ball colors
+    public int greyPoints;
+    public int orangePoints;
+    public int bluePoints;
+    public int greenPoints;
+    public int yellowPoints;
+    public int penaltyPoints; // Points deducted for failed color matches
+<span class="fc" id="L50">    public int levelMultiplier = 1;  // Multiplier based on the current level</span>
+
+    // Offset to move the graphics slightly
+<span class="fc" id="L53">    public int yOffset = 65;  // Adjusted to move the graphics up by 1 pixel</span>
+
+    // The layout of the current level
+    public String[] currentLayout;
+
+    // Wall, hole, and spawner images
+<span class="fc" id="L59">    public PImage[] wallImages = new PImage[5];  // Array to hold wall images (0 to 4)</span>
+<span class="fc" id="L60">    public PImage[] holeImages = new PImage[5];  // Array to hold hole images (0 to 4)</span>
+    public PImage spawnerImage;
+
+    // Timer variables
+<span class="fc" id="L64">    public int frameCounter = 0;  // To control the timer</span>
+    public int spawnCounter;  // To control the spawn interval countdown
+
+    // List to hold spawner positions
+<span class="fc" id="L68">    List&lt;int[]&gt; spawners = new ArrayList&lt;&gt;();</span>
+
+    // List to hold balls
+<span class="fc" id="L71">    List&lt;Ball&gt; balls = new ArrayList&lt;&gt;();</span>
+
+    // List to hold upcoming ball images
+<span class="fc" id="L74">    List&lt;PImage&gt; upcomingBallImages = new ArrayList&lt;&gt;();  // Store ball images</span>
+<span class="fc" id="L75">    Random random = new Random();</span>
+
+    // List to store player-drawn lines
+<span class="fc" id="L78">    List&lt;PVector[]&gt; playerLines = new ArrayList&lt;&gt;();</span>
+
+<span class="fc" id="L80">    public App() {</span>
+<span class="fc" id="L81">        this.configPath = &quot;config.json&quot;;</span>
+<span class="fc" id="L82">    }</span>
+
+    @Override
+    public void settings() {
+<span class="fc" id="L86">        size(WIDTH, HEIGHT);</span>
+<span class="fc" id="L87">    }</span>
+
+    @Override
+    public void setup() {
+<span class="fc" id="L91">        frameRate(FPS);</span>
+
+        // Load wall and spawner images
+<span class="fc" id="L94">        wallImages[0] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/wall0.png&quot;);</span>
+<span class="fc" id="L95">        wallImages[1] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/wall1.png&quot;);</span>
+<span class="fc" id="L96">        wallImages[2] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/wall2.png&quot;);</span>
+<span class="fc" id="L97">        wallImages[3] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/wall3.png&quot;);</span>
+<span class="fc" id="L98">        wallImages[4] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/wall4.png&quot;);</span>
+<span class="fc" id="L99">        spawnerImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/entrypoint.png&quot;);</span>
+
+        // Preload hole images
+<span class="fc" id="L102">        holeImages[0] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/hole0.png&quot;);</span>
+<span class="fc" id="L103">        holeImages[1] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/hole1.png&quot;);</span>
+<span class="fc" id="L104">        holeImages[2] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/hole2.png&quot;);</span>
+<span class="fc" id="L105">        holeImages[3] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/hole3.png&quot;);</span>
+<span class="fc" id="L106">        holeImages[4] = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/hole4.png&quot;);</span>
+
+        // Preload ball images for comparison
+<span class="fc" id="L109">        greyBallImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball0.png&quot;);</span>
+<span class="fc" id="L110">        orangeBallImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball1.png&quot;);</span>
+<span class="fc" id="L111">        blueBallImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball2.png&quot;);</span>
+<span class="fc" id="L112">        greenBallImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball3.png&quot;);</span>
+<span class="fc" id="L113">        yellowBallImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball4.png&quot;);</span>
+
+        // Load arrow images
+<span class="fc" id="L116">        upArrowImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/upArrow.png&quot;);</span>
+<span class="fc" id="L117">        downArrowImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/downArrow.png&quot;);</span>
+<span class="fc" id="L118">        leftArrowImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/leftArrow.png&quot;);</span>
+<span class="fc" id="L119">        rightArrowImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/rightArrow.png&quot;);</span>
+
+        // SPEED PNG ADDITION
+<span class="fc" id="L122">        speedImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/speed.png&quot;);</span>
+<span class="fc" id="L123">        loadLevelConfig(level);  // Load the initial level</span>
+<span class="fc" id="L124">    }</span>
+
+    public void loadLevelConfig(int levelIndex) {
+<span class="fc" id="L127">        JSONObject config = loadJSONObject(configPath);</span>
+<span class="fc" id="L128">        JSONArray levels = config.getJSONArray(&quot;levels&quot;);</span>
+<span class="pc bpc" id="L129" title="1 of 2 branches missed.">        if (levelIndex &lt; levels.size()) {</span>
+<span class="fc" id="L130">            JSONObject selectedLevel = levels.getJSONObject(levelIndex);</span>
+<span class="fc" id="L131">            layoutFile = selectedLevel.getString(&quot;layout&quot;);</span>
+<span class="fc" id="L132">            spawnInterval = selectedLevel.getInt(&quot;spawn_interval&quot;);</span>
+<span class="fc" id="L133">            totalTime = selectedLevel.getInt(&quot;time&quot;, -1);  // Get total time from config, or -1 if not specified</span>
+<span class="fc" id="L134">            remainingTime = totalTime;  // Initialize remaining time for the level</span>
+<span class="fc" id="L135">            spawnCounter = spawnInterval * FPS; // Set the spawn counter based on the spawn interval</span>
+
+            // Load upcoming ball images from the configuration
+<span class="fc" id="L138">            JSONArray ballsArray = selectedLevel.getJSONArray(&quot;balls&quot;);</span>
+<span class="fc" id="L139">            upcomingBallImages.clear();  // Clear previous upcoming balls</span>
+<span class="fc bfc" id="L140" title="All 2 branches covered.">            for (int i = 0; i &lt; ballsArray.size(); i++) {</span>
+<span class="fc" id="L141">                String ballColor = ballsArray.getString(i);</span>
+<span class="fc" id="L142">                String ballImageFile = getBallImageFilename(ballColor);</span>
+<span class="fc" id="L143">                PImage ballImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/&quot; + ballImageFile);</span>
+<span class="fc" id="L144">                upcomingBallImages.add(ballImage);  // Add ball image</span>
+            }
+
+            // Load point values and penalties from the configuration
+<span class="fc" id="L148">            greyPoints = selectedLevel.getInt(&quot;grey_points&quot;, 5);</span>
+<span class="fc" id="L149">            orangePoints = selectedLevel.getInt(&quot;orange_points&quot;, 10);</span>
+<span class="fc" id="L150">            bluePoints = selectedLevel.getInt(&quot;blue_points&quot;, 15);</span>
+<span class="fc" id="L151">            greenPoints = selectedLevel.getInt(&quot;green_points&quot;, 20);</span>
+<span class="fc" id="L152">            yellowPoints = selectedLevel.getInt(&quot;yellow_points&quot;, 25);</span>
+<span class="fc" id="L153">            penaltyPoints = selectedLevel.getInt(&quot;penalty_points&quot;, 5);</span>
+<span class="fc" id="L154">            levelMultiplier = selectedLevel.getInt(&quot;level_multiplier&quot;, 1);</span>
+
+            // Load the level layout and identify spawner positions
+<span class="fc" id="L157">            loadLevel(layoutFile);</span>
+<span class="fc" id="L158">        } else {</span>
+<span class="nc" id="L159">            System.out.println(&quot;No more levels available.&quot;);</span>
+        }
+<span class="fc" id="L161">    }</span>
+
+    public void loadLevel(String layoutFile) {
+<span class="fc" id="L164">        currentLayout = loadStrings(layoutFile);  // Load the layout file as a string array</span>
+<span class="fc" id="L165">        spawners.clear();  // Clear previous spawner positions</span>
+<span class="fc" id="L166">        balls.clear(); // Clear previous balls</span>
+
+<span class="fc bfc" id="L168" title="All 2 branches covered.">        for (int row = 0; row &lt; currentLayout.length; row++) {</span>
+<span class="fc" id="L169">            String line = currentLayout[row];</span>
+<span class="fc bfc" id="L170" title="All 2 branches covered.">            for (int col = 0; col &lt; line.length(); col++) {</span>
+<span class="fc" id="L171">                char cell = line.charAt(col);</span>
+<span class="fc bfc" id="L172" title="All 2 branches covered.">                if (cell == 'S') {</span>
+<span class="fc" id="L173">                    spawners.add(new int[]{col, row});  // Store the spawner position</span>
+<span class="pc bpc" id="L174" title="2 of 6 branches missed.">                } else if (cell == 'B' &amp;&amp; col + 1 &lt; line.length() &amp;&amp; Character.isDigit(line.charAt(col + 1))) {</span>
+<span class="fc" id="L175">                    int ballType = Character.getNumericValue(line.charAt(col + 1));</span>
+<span class="fc" id="L176">                    PImage ballImage = loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball&quot; + ballType + &quot;.png&quot;);</span>
+<span class="fc bfc" id="L177" title="All 2 branches covered.">                    float vx = random.nextBoolean() ? 2 : -2; // Random X velocity</span>
+<span class="fc bfc" id="L178" title="All 2 branches covered.">                    float vy = random.nextBoolean() ? 2 : -2; // Random Y velocity</span>
+<span class="fc" id="L179">                    balls.add(new Ball(col * CELLSIZE, row * CELLSIZE + yOffset, vx, vy, ballImage, this));  // Pass 'this' as the PApplet instance</span>
+<span class="fc" id="L180">                    col++; // Skip the digit to avoid overlapping</span>
+                }
+            }
+        }
+
+<span class="fc" id="L185">        System.out.println(&quot;Spawners found: &quot; + spawners.size());</span>
+<span class="fc" id="L186">    }</span>
+
+    @Override
+    public void draw() {
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">        if (levelEnded) {</span>
+            // Show the &quot;TIME'S UP&quot; message and disable interactions
+<span class="nc" id="L192">            fill(0);</span>
+<span class="nc" id="L193">            textSize(32);</span>
+<span class="nc" id="L194">            text(&quot;=== TIME’S UP ===&quot;, WIDTH / 2 - 100, 50);</span>
+<span class="nc" id="L195">            return;  // Exit early to prevent updating the game state</span>
+        }
+
+<span class="fc" id="L198">        background(255);  // Clear the screen with white</span>
+
+<span class="fc" id="L200">        frameCounter++;</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">        if (frameCounter &gt;= FPS) {  // 1 second has passed</span>
+<span class="fc" id="L202">            remainingTime--;</span>
+<span class="fc" id="L203">            frameCounter = 0;  // Reset the frame counter</span>
+        }
+
+<span class="pc bpc" id="L206" title="1 of 2 branches missed.">        if (remainingTime &lt;= 0) {</span>
+            // Level ends when time reaches 0
+<span class="nc" id="L208">            levelEnded = true;</span>
+<span class="nc" id="L209">            remainingTime = 0;</span>
+<span class="nc" id="L210">            noLoop();  // Stop the game loop (balls stop moving)</span>
+        }
+
+<span class="fc" id="L213">        drawWallsAndHoles();  // Now includes holes</span>
+<span class="fc" id="L214">        drawSpawners();</span>
+<span class="fc" id="L215">        updateAndDisplayBalls();  // Update and display balls</span>
+
+<span class="fc" id="L217">        displayTimer();</span>
+<span class="fc" id="L218">        displayScore();</span>
+<span class="fc" id="L219">        displayUpcomingBalls();</span>
+
+<span class="fc" id="L221">        stroke(0);</span>
+<span class="fc" id="L222">        strokeWeight(10);</span>
+<span class="fc bfc" id="L223" title="All 2 branches covered.">        for (PVector[] line : playerLines) {</span>
+<span class="fc" id="L224">            line(line[0].x, line[0].y, line[1].x, line[1].y);</span>
+<span class="fc" id="L225">        }</span>
+<span class="fc" id="L226">    }</span>
+
+    public String getBallColorFromImage(PImage ballImage) {
+<span class="pc bpc" id="L229" title="1 of 2 branches missed.">        if (ballImage == null) return null;</span>
+
+        // Compare pixel data instead of using ==
+<span class="fc bfc" id="L232" title="All 2 branches covered.">        if (compareImages(ballImage, greyBallImage)) return &quot;grey&quot;;</span>
+<span class="fc bfc" id="L233" title="All 2 branches covered.">        if (compareImages(ballImage, orangeBallImage)) return &quot;orange&quot;;</span>
+<span class="fc bfc" id="L234" title="All 2 branches covered.">        if (compareImages(ballImage, blueBallImage)) return &quot;blue&quot;;</span>
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">        if (compareImages(ballImage, greenBallImage)) return &quot;green&quot;;</span>
+<span class="pc bpc" id="L236" title="1 of 2 branches missed.">        if (compareImages(ballImage, yellowBallImage)) return &quot;yellow&quot;;</span>
+
+<span class="nc" id="L238">        return null;</span>
+    }
+
+    private boolean compareImages(PImage img1, PImage img2) {
+<span class="pc bpc" id="L242" title="1 of 4 branches missed.">        if (img1.width != img2.width || img1.height != img2.height) {</span>
+<span class="fc" id="L243">            return false;</span>
+        }
+
+<span class="fc" id="L246">        img1.loadPixels();</span>
+<span class="fc" id="L247">        img2.loadPixels();</span>
+
+<span class="fc bfc" id="L249" title="All 2 branches covered.">        for (int i = 0; i &lt; img1.pixels.length; i++) {</span>
+<span class="fc bfc" id="L250" title="All 2 branches covered.">            if (img1.pixels[i] != img2.pixels[i]) {</span>
+<span class="fc" id="L251">                return false;</span>
+            }
+        }
+
+<span class="fc" id="L255">        return true;</span>
+    }
+
+    @Override
+    public void keyPressed() {
+<span class="pc bpc" id="L260" title="1 of 2 branches missed.">        if (key == 'r') {</span>
+<span class="fc" id="L261">            restartLevel();  // Call the restart function</span>
+        }
+<span class="fc" id="L263">    }</span>
+
+    public void restartLevel() {
+<span class="fc" id="L266">        levelEnded = false;  // Reset the level end state</span>
+<span class="fc" id="L267">        remainingTime = totalTime;  // Reset the timer</span>
+<span class="fc" id="L268">        playerLines.clear();  // Remove any drawn lines</span>
+<span class="fc" id="L269">        loadLevelConfig(level);  // Reload the level configuration</span>
+<span class="fc" id="L270">        loop();  // Resume the game loop</span>
+<span class="fc" id="L271">    }</span>
+
+    @Override
+    public void mouseDragged() {
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        if (!levelEnded) {</span>
+<span class="nc" id="L276">            PVector startPoint = new PVector(mouseX, mouseY);</span>
+<span class="nc" id="L277">            PVector endPoint = new PVector(pmouseX, pmouseY);  // Previous mouse position</span>
+<span class="nc" id="L278">            playerLines.add(new PVector[]{startPoint, endPoint});</span>
+        }
+<span class="nc" id="L280">    }</span>
+
+    // Function to draw the speed boost when encountering 'Q'
+    public void drawSpeedBoost(int col, int row) {
+<span class="pc bpc" id="L284" title="1 of 2 branches missed.">        if (speedImage != null) {</span>
+            // Resize the speed image to match the CELLSIZE dimensions
+<span class="fc" id="L286">            PImage resizedSpeedImage = speedImage.copy();</span>
+<span class="fc" id="L287">            resizedSpeedImage.resize(CELLSIZE, CELLSIZE);</span>
+
+            // Draw the resized speed image at the specified location
+<span class="fc" id="L290">            image(resizedSpeedImage, col * CELLSIZE, row * CELLSIZE + yOffset);</span>
+<span class="fc" id="L291">        } else {</span>
+<span class="nc" id="L292">            System.out.println(&quot;Speed image not loaded.&quot;);</span>
+        }
+<span class="fc" id="L294">    }</span>
+
+    // Function to check if the ball collides with an acceleration tile and accelerate in the given direction
+    public void checkAccelerationTileCollision(Ball ball) {
+<span class="fc" id="L298">        boolean onAccelerationTile = false;</span>
+<span class="fc bfc" id="L299" title="All 2 branches covered.">        for (int row = 0; row &lt; currentLayout.length; row++) {</span>
+<span class="fc" id="L300">            String line = currentLayout[row];</span>
+<span class="fc bfc" id="L301" title="All 2 branches covered.">            for (int col = 0; col &lt; line.length(); col++) {</span>
+<span class="fc bfc" id="L302" title="All 2 branches covered.">                if (line.charAt(col) == 'Q') {  // Acceleration tile character</span>
+<span class="fc" id="L303">                    float tileX = col * CELLSIZE;</span>
+<span class="fc" id="L304">                    float tileY = row * CELLSIZE + yOffset;</span>
+
+                    // Check if the ball's position is within the acceleration tile's boundaries
+<span class="fc bfc" id="L307" title="All 8 branches covered.">                    if (ball.x + CELLSIZE &gt; tileX &amp;&amp; ball.x &lt; tileX + CELLSIZE &amp;&amp;</span>
+                        ball.y + CELLSIZE &gt; tileY &amp;&amp; ball.y &lt; tileY + CELLSIZE) {
+<span class="fc" id="L309">                        onAccelerationTile = true;</span>
+<span class="fc" id="L310">                        break;</span>
+                    }
+                }
+            }
+<span class="fc bfc" id="L314" title="All 2 branches covered.">            if (onAccelerationTile) break;</span>
+        }
+
+        // Only accelerate if the ball is on an acceleration tile
+<span class="fc bfc" id="L318" title="All 2 branches covered.">        if (onAccelerationTile) {</span>
+<span class="fc" id="L319">            ball.accelerate();</span>
+        }
+<span class="fc" id="L321">    }</span>
+
+    public void drawWallsAndHoles() {
+<span class="fc bfc" id="L324" title="All 2 branches covered.">        for (int row = 0; row &lt; currentLayout.length; row++) {</span>
+<span class="fc" id="L325">            String line = currentLayout[row];</span>
+<span class="fc bfc" id="L326" title="All 2 branches covered.">            for (int col = 0; col &lt; line.length(); col++) {</span>
+<span class="fc" id="L327">                char cell = line.charAt(col);</span>
+<span class="fc bfc" id="L328" title="All 2 branches covered.">                if (cell == 'X') {</span>
+<span class="fc" id="L329">                    image(wallImages[0], col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw wall</span>
+<span class="fc bfc" id="L330" title="All 2 branches covered.">                } else if (Character.isDigit(cell)) {</span>
+<span class="fc" id="L331">                    int wallType = Character.getNumericValue(cell);</span>
+<span class="pc bpc" id="L332" title="2 of 4 branches missed.">                    if (wallType &gt;= 1 &amp;&amp; wallType &lt;= 4) {</span>
+<span class="fc" id="L333">                        image(wallImages[wallType], col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw specific wall type</span>
+                    }
+<span class="pc bpc" id="L335" title="2 of 6 branches missed.">                } else if (cell == 'H' &amp;&amp; col + 1 &lt; line.length() &amp;&amp; Character.isDigit(line.charAt(col + 1))) {</span>
+<span class="fc" id="L336">                    int holeType = Character.getNumericValue(line.charAt(col + 1));</span>
+<span class="pc bpc" id="L337" title="2 of 4 branches missed.">                    if (holeType &gt;= 0 &amp;&amp; holeType &lt;= 4) {</span>
+<span class="fc" id="L338">                        image(holeImages[holeType], col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw the corresponding hole image</span>
+<span class="fc" id="L339">                        col++;  // Skip the next digit</span>
+                    }
+<span class="pc bpc" id="L341" title="1 of 2 branches missed.">                } else if (cell == 'u') {</span>
+<span class="nc" id="L342">                    image(upArrowImage, col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw up arrow</span>
+<span class="pc bpc" id="L343" title="1 of 2 branches missed.">                } else if (cell == 'd') {</span>
+<span class="nc" id="L344">                    image(downArrowImage, col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw down arrow</span>
+<span class="pc bpc" id="L345" title="1 of 2 branches missed.">                } else if (cell == 'l') {</span>
+<span class="nc" id="L346">                    image(leftArrowImage, col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw left arrow</span>
+<span class="pc bpc" id="L347" title="1 of 2 branches missed.">                } else if (cell == 'r') {</span>
+<span class="nc" id="L348">                    image(rightArrowImage, col * CELLSIZE, row * CELLSIZE + yOffset);  // Draw right arrow</span>
+<span class="fc bfc" id="L349" title="All 2 branches covered.">                } else if (cell == 'Q') {</span>
+                    // Call the separate function to handle the speed boost image
+<span class="fc" id="L351">                    drawSpeedBoost(col, row);</span>
+                }
+            }
+        }
+<span class="fc" id="L355">    }</span>
+
+    public void drawSpawners() {
+<span class="fc bfc" id="L358" title="All 2 branches covered.">        for (int[] spawner : spawners) {</span>
+<span class="fc" id="L359">            image(spawnerImage, spawner[0] * CELLSIZE, spawner[1] * CELLSIZE + yOffset);</span>
+<span class="fc" id="L360">        }</span>
+<span class="fc" id="L361">    }</span>
+
+    public void updateAndDisplayBalls() {
+<span class="pc bpc" id="L364" title="1 of 2 branches missed.">        if (levelEnded) return;  // Don't update balls if the level is ended</span>
+
+<span class="fc bfc" id="L366" title="All 2 branches covered.">        for (int i = balls.size() - 1; i &gt;= 0; i--) { // Reverse loop to remove balls if needed</span>
+<span class="fc" id="L367">            Ball ball = balls.get(i);</span>
+<span class="fc" id="L368">            ball.update();  // Update the ball's position</span>
+<span class="fc" id="L369">            ball.handleLineCollision(playerLines);  // Handle player-drawn line collisions</span>
+<span class="fc" id="L370">            ball.handleWallCollision(currentLayout);  // Handle the wall collision with improved movement</span>
+
+            // Check for acceleration tile collision
+<span class="fc" id="L373">            checkAccelerationTileCollision(ball);</span>
+
+<span class="fc bfc" id="L375" title="All 2 branches covered.">            if (checkHoleAbsorption(ball)) {</span>
+<span class="fc bfc" id="L376" title="All 2 branches covered.">                if (!respawnBallAtSpawner(ball)) {</span>
+<span class="fc" id="L377">                    balls.remove(i);  // If it's not a grey ball or cannot be respawned, absorb the ball (remove it)</span>
+                }
+            } else {
+<span class="fc" id="L380">                ball.display(this);  // Draw the ball if not absorbed</span>
+            }
+        }
+
+<span class="fc" id="L384">        spawnCounter--;</span>
+<span class="pc bpc" id="L385" title="1 of 4 branches missed.">        if (spawnCounter &lt;= 0 &amp;&amp; !upcomingBallImages.isEmpty()) {</span>
+<span class="fc" id="L386">            int randomSpawnerIndex = random.nextInt(spawners.size());</span>
+<span class="fc" id="L387">            int[] spawner = spawners.get(randomSpawnerIndex);</span>
+<span class="fc" id="L388">            int spawnX = spawner[0] * CELLSIZE;</span>
+<span class="fc" id="L389">            int spawnY = spawner[1] * CELLSIZE + yOffset;</span>
+<span class="fc" id="L390">            PImage nextBallImage = upcomingBallImages.remove(0);  // Get the next ball image to spawn</span>
+
+<span class="pc bpc" id="L392" title="1 of 2 branches missed.">            if (nextBallImage == null) {</span>
+<span class="nc" id="L393">                System.out.println(&quot;Error: Image not found for upcoming ball.&quot;);</span>
+            } else {
+<span class="fc bfc" id="L395" title="All 2 branches covered.">                float vx = random.nextBoolean() ? 2 : -2; // Random X velocity</span>
+<span class="fc bfc" id="L396" title="All 2 branches covered.">                float vy = random.nextBoolean() ? 2 : -2; // Random Y velocity</span>
+<span class="fc" id="L397">                balls.add(new Ball(spawnX, spawnY, vx, vy, nextBallImage, this));  // Spawn the ball</span>
+            }
+<span class="fc" id="L399">            spawnCounter = spawnInterval * FPS;  // Reset the spawn counter</span>
+        }
+<span class="fc" id="L401">    }</span>
+
+    public void displayTimer() {
+<span class="fc" id="L404">        fill(0);</span>
+<span class="fc" id="L405">        textSize(18);</span>
+<span class="fc" id="L406">        text(&quot;Time: &quot; + remainingTime, WIDTH - 150, 50);  // Display remaining time</span>
+
+<span class="pc bpc" id="L408" title="1 of 2 branches missed.">        if (levelEnded) {</span>
+<span class="nc" id="L409">            text(&quot;=== TIME’S UP ===&quot;, WIDTH / 2 - 100, 50);  // Show message if time is up</span>
+        }
+<span class="fc" id="L411">    }</span>
+
+    public void displayScore() {
+<span class="fc" id="L414">        fill(0);</span>
+<span class="fc" id="L415">        textSize(18);</span>
+<span class="fc" id="L416">        text(&quot;Score: &quot; + score, 20, 50);  // Display the current score</span>
+<span class="fc" id="L417">    }</span>
+
+    public void displayUpcomingBalls() {
+<span class="fc bfc" id="L420" title="All 2 branches covered.">        for (int i = 0; i &lt; min(5, upcomingBallImages.size()); i++) {</span>
+<span class="fc" id="L421">            PImage ballImage = upcomingBallImages.get(i);</span>
+<span class="fc" id="L422">            image(ballImage, 150 + (i * 40), 20, 32, 32);  // Display the ball image in the top bar</span>
+        }
+<span class="fc" id="L424">    }</span>
+
+    public boolean respawnBallAtSpawner(Ball ball) {
+<span class="fc" id="L427">        String ballColor = getBallColorFromImage(ball.image);</span>
+<span class="pc bpc" id="L428" title="1 of 4 branches missed.">        if (ballColor != null &amp;&amp; ballColor.equals(&quot;grey&quot;)) {</span>
+<span class="fc" id="L429">            int randomSpawnerIndex = random.nextInt(spawners.size());</span>
+<span class="fc" id="L430">            int[] spawner = spawners.get(randomSpawnerIndex);</span>
+<span class="fc" id="L431">            ball.x = spawner[0] * CELLSIZE;</span>
+<span class="fc" id="L432">            ball.y = spawner[1] * CELLSIZE + yOffset;</span>
+<span class="fc" id="L433">            return true;</span>
+        }
+<span class="fc" id="L435">        return false;</span>
+    }
+
+    public String getHoleColor(int holeType) {
+<span class="pc bpc" id="L439" title="3 of 6 branches missed.">        switch (holeType) {</span>
+<span class="fc" id="L440">            case 0: return &quot;grey&quot;;</span>
+<span class="fc" id="L441">            case 1: return &quot;orange&quot;;</span>
+<span class="fc" id="L442">            case 2: return &quot;blue&quot;;</span>
+<span class="nc" id="L443">            case 3: return &quot;green&quot;;</span>
+<span class="nc" id="L444">            case 4: return &quot;yellow&quot;;</span>
+<span class="nc" id="L445">            default: return null;</span>
+        }
+    }
+
+    public boolean checkHoleAbsorption(Ball ball) {
+<span class="fc bfc" id="L450" title="All 2 branches covered.">        for (int row = 0; row &lt; currentLayout.length; row++) {</span>
+<span class="fc" id="L451">            String line = currentLayout[row];</span>
+<span class="fc bfc" id="L452" title="All 2 branches covered.">            for (int col = 0; col &lt; line.length(); col++) {</span>
+<span class="fc" id="L453">                char cell = line.charAt(col);</span>
+<span class="pc bpc" id="L454" title="2 of 6 branches missed.">                if (cell == 'H' &amp;&amp; col + 1 &lt; line.length() &amp;&amp; Character.isDigit(line.charAt(col + 1))) {</span>
+<span class="fc" id="L455">                    int holeType = Character.getNumericValue(line.charAt(col + 1));</span>
+<span class="pc bpc" id="L456" title="2 of 4 branches missed.">                    if (holeType &gt;= 0 &amp;&amp; holeType &lt;= 4) {</span>
+<span class="fc" id="L457">                        float holeX = col * CELLSIZE;</span>
+<span class="fc" id="L458">                        float holeY = row * CELLSIZE + yOffset;</span>
+
+                        // Check if the ball's position is within the hole's boundaries
+<span class="fc bfc" id="L461" title="All 8 branches covered.">                        if (ball.x + CELLSIZE &gt; holeX &amp;&amp; ball.x &lt; holeX + CELLSIZE &amp;&amp;</span>
+                            ball.y + CELLSIZE &gt; holeY &amp;&amp; ball.y &lt; holeY + CELLSIZE) {
+
+                            // Get the ball's color
+<span class="fc" id="L465">                            String ballColor = getBallColorFromImage(ball.image);</span>
+                            // Get the hole's color
+<span class="fc" id="L467">                            String holeColor = getHoleColor(holeType);</span>
+
+                            // DEBUG STATEMENTS
+<span class="fc" id="L470">                            System.out.println(&quot;Ball Color: &quot; + ballColor);</span>
+<span class="fc" id="L471">                            System.out.println(&quot;Hole Color: &quot; + holeColor);</span>
+
+                            // Check if the ball's color matches the hole's color or if it's a grey match
+<span class="pc bpc" id="L474" title="1 of 4 branches missed.">                            if ((ballColor != null &amp;&amp; ballColor.equals(holeColor)) || </span>
+<span class="fc bfc" id="L475" title="All 4 branches covered.">                                ballColor.equals(&quot;grey&quot;) || holeColor.equals(&quot;grey&quot;)) {</span>
+                                
+                                // Increase the score based on the color match and level multiplier
+<span class="pc bpc" id="L478" title="3 of 6 branches missed.">                                switch (ballColor) {</span>
+                                    case &quot;grey&quot;:
+<span class="fc" id="L480">                                        score += greyPoints * levelMultiplier;</span>
+<span class="fc" id="L481">                                        break;</span>
+                                    case &quot;orange&quot;:
+<span class="fc" id="L483">                                        score += orangePoints * levelMultiplier;</span>
+<span class="fc" id="L484">                                        break;</span>
+                                    case &quot;blue&quot;:
+<span class="fc" id="L486">                                        score += bluePoints * levelMultiplier;</span>
+<span class="fc" id="L487">                                        break;</span>
+                                    case &quot;green&quot;:
+<span class="nc" id="L489">                                        score += greenPoints * levelMultiplier;</span>
+<span class="nc" id="L490">                                        break;</span>
+                                    case &quot;yellow&quot;:
+<span class="nc" id="L492">                                        score += yellowPoints * levelMultiplier;</span>
+                                        break;
+                                }
+
+                                // Debug: Indicate successful absorption
+<span class="fc" id="L497">                                System.out.println(&quot;Ball absorbed with matching color!&quot;);</span>
+
+<span class="fc" id="L499">                                return true;  // Ball is absorbed</span>
+                            } else {
+                                // If the match is unsuccessful, decrease the score and respawn the ball
+<span class="fc" id="L502">                                score -= penaltyPoints;</span>
+<span class="fc" id="L503">                                upcomingBallImages.add(ball.image);</span>
+<span class="fc" id="L504">                                System.out.println(&quot;Ball failed to match. Respawning and deducting score.&quot;);</span>
+<span class="fc" id="L505">                                return false;</span>
+                            }
+                        }
+                    }
+                }
+            }
+        }
+<span class="fc" id="L512">        return false;</span>
+    }
+
+    public String getBallImageFilename(String ballType) {
+<span class="pc bpc" id="L516" title="1 of 6 branches missed.">        switch (ballType) {</span>
+            case &quot;grey&quot;:
+<span class="fc" id="L518">                return &quot;ball0.png&quot;;</span>
+            case &quot;orange&quot;:
+<span class="fc" id="L520">                return &quot;ball1.png&quot;;</span>
+            case &quot;blue&quot;:
+<span class="fc" id="L522">                return &quot;ball2.png&quot;;</span>
+            case &quot;green&quot;:
+<span class="fc" id="L524">                return &quot;ball3.png&quot;;</span>
+            case &quot;yellow&quot;:
+<span class="fc" id="L526">                return &quot;ball4.png&quot;;</span>
+            default:
+<span class="nc" id="L528">                System.out.println(&quot;Unknown ball type: &quot; + ballType);</span>
+<span class="nc" id="L529">                return &quot;default_ball.png&quot;;</span>
+        }
+    }
+
+    public static void main(String[] args) {
+<span class="nc" id="L534">        PApplet.main(&quot;inkball.App&quot;);</span>
+<span class="nc" id="L535">    }</span>
+}
+
+// Ball class definition
+class Ball {
+    float x, y;  // Position of the ball
+    float vx, vy;  // Velocity of the ball
+    PImage image;  // Image of the ball
+    PApplet applet;  // Reference to PApplet for random function
+
+    private static final float ACCELERATION_FACTOR = 1.1f;  // Speed boost factor
+
+<span class="fc" id="L547">    Ball(float x, float y, float vx, float vy, PImage image, PApplet applet) {</span>
+<span class="fc" id="L548">        this.x = x;</span>
+<span class="fc" id="L549">        this.y = y;</span>
+<span class="fc" id="L550">        this.vx = vx;</span>
+<span class="fc" id="L551">        this.vy = vy;</span>
+<span class="fc" id="L552">        this.image = image;</span>
+<span class="fc" id="L553">        this.applet = applet;</span>
+<span class="fc" id="L554">    }</span>
+
+    void update() {
+<span class="fc" id="L557">        x += vx;</span>
+<span class="fc" id="L558">        y += vy;</span>
+<span class="fc" id="L559">    }</span>
+
+    // Method to accelerate the ball
+    void accelerate() {
+<span class="fc" id="L563">        vx *= ACCELERATION_FACTOR;</span>
+<span class="fc" id="L564">        vy *= ACCELERATION_FACTOR;</span>
+<span class="fc" id="L565">    }</span>
+
+    void handleLineCollision(List&lt;PVector[]&gt; playerLines) {
+<span class="fc bfc" id="L568" title="All 2 branches covered.">        for (int i = playerLines.size() - 1; i &gt;= 0; i--) {  // Iterate backwards to avoid index issues when removing</span>
+<span class="fc" id="L569">            PVector[] line = playerLines.get(i);</span>
+<span class="fc" id="L570">            PVector p1 = line[0];</span>
+<span class="fc" id="L571">            PVector p2 = line[1];</span>
+
+            // Calculate the distance of the ball from the line segment
+<span class="fc" id="L574">            float distanceToLine = distToSegment(new PVector(x, y), p1, p2);</span>
+
+            // Check if the ball is close to the line segment (within a certain distance threshold)
+<span class="fc bfc" id="L577" title="All 2 branches covered.">            if (distanceToLine &lt; App.CELLSIZE / 2) {  // Use CELLSIZE / 2 as a threshold for collision detection</span>
+                // Reflect the ball's velocity
+<span class="fc" id="L579">                PVector lineVector = PVector.sub(p2, p1).normalize();</span>
+<span class="fc" id="L580">                PVector normal = new PVector(-lineVector.y, lineVector.x);  // Perpendicular to the line</span>
+<span class="fc" id="L581">                PVector velocity = new PVector(vx, vy);</span>
+<span class="fc" id="L582">                vx = velocity.x - 2 * PVector.dot(velocity, normal) * normal.x;</span>
+<span class="fc" id="L583">                vy = velocity.y - 2 * PVector.dot(velocity, normal) * normal.y;</span>
+
+                // Remove the entire line from the list
+<span class="fc" id="L586">                playerLines.remove(i);</span>
+<span class="fc" id="L587">                break;  // Exit loop since a line has been hit</span>
+            }
+        }
+<span class="fc" id="L590">    }</span>
+
+    // Change the ball's color based on the wall type it hits, except for grey walls
+    void changeBallColorBasedOnWall(char wallType) {
+<span class="fc bfc" id="L594" title="All 5 branches covered.">        switch (wallType) {</span>
+            case '1':
+                // Wall type 1 - set to orange
+<span class="fc" id="L597">                image = applet.loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball1.png&quot;);</span>
+<span class="fc" id="L598">                break;</span>
+            case '2':
+                // Wall type 2 - set to blue
+<span class="fc" id="L601">                image = applet.loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball2.png&quot;);</span>
+<span class="fc" id="L602">                break;</span>
+            case '3':
+                // Wall type 3 - set to green
+<span class="fc" id="L605">                image = applet.loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball3.png&quot;);</span>
+<span class="fc" id="L606">                break;</span>
+            case '4':
+                // Wall type 4 - set to yellow
+<span class="fc" id="L609">                image = applet.loadImage(&quot;/Users/a/Downloads/inkball_scaffold/src/main/resources/inkball/ball4.png&quot;);</span>
+<span class="fc" id="L610">                break;</span>
+            default:
+                // If it's a grey wall or an unrecognized type, do nothing
+                break;
+        }
+<span class="fc" id="L615">    }</span>
+
+    // Helper function to calculate the distance from the ball to the line segment
+    float distToSegment(PVector p, PVector v, PVector w) {
+<span class="fc" id="L619">        float l2 = PVector.dist(v, w) * PVector.dist(v, w);  // Length squared</span>
+<span class="pc bpc" id="L620" title="1 of 2 branches missed.">        if (l2 == 0.0) return PVector.dist(p, v);  // v == w case</span>
+<span class="fc" id="L621">        float t = PVector.dot(PVector.sub(p, v), PVector.sub(w, v)) / l2;</span>
+<span class="fc" id="L622">        t = Math.max(0, Math.min(1, t));  // Use Math.max and Math.min with floats</span>
+<span class="fc" id="L623">        PVector projection = PVector.add(v, PVector.mult(PVector.sub(w, v), t));</span>
+<span class="fc" id="L624">        return PVector.dist(p, projection);</span>
+    }
+
+    void display(PApplet applet) {
+<span class="fc" id="L628">        applet.image(image, x, y);</span>
+<span class="fc" id="L629">    }</span>
+
+    void handleWallCollision(String[] layout) {
+        // Calculate which row and column the ball is in based on its current position
+<span class="fc" id="L633">        int col = (int) (x / App.CELLSIZE);</span>
+<span class="fc" id="L634">        int row = (int) ((y - App.TOPBAR) / App.CELLSIZE);</span>
+
+        // Boundary checks to prevent index out of bounds
+<span class="pc bpc" id="L637" title="3 of 8 branches missed.">        if (col &lt; 0 || col &gt;= layout[0].length() || row &lt; 0 || row &gt;= layout.length) {</span>
+<span class="fc" id="L638">            return;  // If the ball is out of bounds, skip handling</span>
+        }
+
+        // Get the current character from the layout
+<span class="fc" id="L642">        char cell = layout[row].charAt(col);</span>
+
+        // List of valid wall characters (including other colored walls, e.g., '1', '2', '3', '4')
+<span class="pc bpc" id="L645" title="1 of 10 branches missed.">        if (cell == 'X' || cell == '1' || cell == '2' || cell == '3' || cell == '4') {</span>
+
+            // Change the ball's color based on the wall it hits
+<span class="fc" id="L648">            changeBallColorBasedOnWall(cell);</span>
+
+            // Store the previous position
+<span class="fc" id="L651">            float prevX = x - vx;</span>
+<span class="fc" id="L652">            float prevY = y - vy;</span>
+
+            // Calculate the previous row and column before the ball moved
+<span class="fc" id="L655">            int prevCol = (int) (prevX / App.CELLSIZE);</span>
+<span class="fc" id="L656">            int prevRow = (int) ((prevY - App.TOPBAR) / App.CELLSIZE);</span>
+
+<span class="fc" id="L658">            PVector velocity = new PVector(vx, vy);</span>
+<span class="fc" id="L659">            PVector normal = new PVector();</span>
+
+            // Horizontal collision (left-right)
+<span class="fc bfc" id="L662" title="All 2 branches covered.">            if (prevCol != col) {</span>
+<span class="fc bfc" id="L663" title="All 2 branches covered.">                if (vx &gt; 0) {</span>
+<span class="fc" id="L664">                    normal = new PVector(-1, 0);  // Moving right, hit left side of wall</span>
+                } else {
+<span class="fc" id="L666">                    normal = new PVector(1, 0);  // Moving left, hit right side of wall</span>
+                }
+            }
+
+            // Vertical collision (up-down)
+<span class="fc bfc" id="L671" title="All 2 branches covered.">            if (prevRow != row) {</span>
+<span class="fc bfc" id="L672" title="All 2 branches covered.">                if (vy &gt; 0) {</span>
+<span class="fc" id="L673">                    normal = new PVector(0, -1);  // Moving down, hit top of wall</span>
+                } else {
+<span class="fc" id="L675">                    normal = new PVector(0, 1);  // Moving up, hit bottom of wall</span>
+                }
+            }
+
+            // Reflect velocity based on the normal vector
+<span class="fc" id="L680">            float dotProduct = velocity.dot(normal);</span>
+<span class="fc" id="L681">            PVector reflection = PVector.sub(velocity, PVector.mult(normal, 2 * dotProduct));</span>
+<span class="fc" id="L682">            vx = reflection.x;</span>
+<span class="fc" id="L683">            vy = reflection.y;</span>
+        }
+
+        // Reflect at the boundaries of the game window (optional)
+<span class="fc bfc" id="L687" title="All 4 branches covered.">        if (x &lt;= 0 || x + App.CELLSIZE &gt;= App.WIDTH) {</span>
+<span class="fc bfc" id="L688" title="All 2 branches covered.">            PVector normal = new PVector(x &lt;= 0 ? 1 : -1, 0);  // Left or right boundary</span>
+<span class="fc" id="L689">            PVector velocity = new PVector(vx, vy);</span>
+<span class="fc" id="L690">            float dotProduct = velocity.dot(normal);</span>
+<span class="fc" id="L691">            PVector reflection = PVector.sub(velocity, PVector.mult(normal, 2 * dotProduct));</span>
+<span class="fc" id="L692">            vx = reflection.x;</span>
+<span class="fc" id="L693">            vy = reflection.y;</span>
+<span class="fc bfc" id="L694" title="All 2 branches covered.">            x = (x &lt;= 0) ? 0 : App.WIDTH - App.CELLSIZE;  // Adjust position to stay within bounds</span>
+        }
+<span class="fc bfc" id="L696" title="All 4 branches covered.">        if (y &lt;= App.TOPBAR || y + App.CELLSIZE &gt;= App.HEIGHT) {</span>
+<span class="fc bfc" id="L697" title="All 2 branches covered.">            PVector normal = new PVector(0, y &lt;= App.TOPBAR ? 1 : -1);  // Top or bottom boundary</span>
+<span class="fc" id="L698">            PVector velocity = new PVector(vx, vy);</span>
+<span class="fc" id="L699">            float dotProduct = velocity.dot(normal);</span>
+<span class="fc" id="L700">            PVector reflection = PVector.sub(velocity, PVector.mult(normal, 2 * dotProduct));</span>
+<span class="fc" id="L701">            vx = reflection.x;</span>
+<span class="fc" id="L702">            vy = reflection.y;</span>
+<span class="fc bfc" id="L703" title="All 2 branches covered.">            y = (y &lt;= App.TOPBAR) ? App.TOPBAR : App.HEIGHT - App.CELLSIZE;  // Adjust position to stay within bounds</span>
+        }
+<span class="fc" id="L705">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
